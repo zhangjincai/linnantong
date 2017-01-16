@@ -1,0 +1,90 @@
+
+2016-04-12：
+一、lnt.h修改：
+1.增加充值流程阶段1~4的结构体
+
+2.增加宏#define LNT_MOC_ERROR_UNKNOW	0xEE  //未知错误
+
+3.修改宏：
+#define AGENT_OFF_CARD_STAGE5
+#define AGENT_OFF_CARD_STAGE6
+#define AGENT_OFF_CARD_STAGE9
+#define AGENT_OFF_CARD_STAGE10
+
+4.增加充值命令的宏定义：
+#define AGENT_RECHARGE_STAGE1 ~ #define AGENT_RECHARGE_STAGE18
+
+5.枚举enum AGENT_TYPE增加变量：AGENT_RECHARGE = 0x05 //充值
+
+6.结构体struct agent_extra_data增加成员：unsigned char order[10]和unsigned int recharge
+
+7.结构体struct lnt_agent_off_card_stage23_CTS增加成员：unsigned char order[10]和unsigned int recharge
+
+二、lib_lnt.h修改：
+1.新增充值函数：
+enum AGENT_ERR lib_lnt_recharge_stage1TO2_process(const int sockfd, lnt_agent_recharge_stage1_CTS_t *stage1, lnt_agent_recharge_stage2_STC_t *stage2, agent_extra_data_t *extra);
+enum AGENT_ERR lib_lnt_recharge_stage3TO4_process(const int sockfd, agent_extra_data_t *extra, lnt_agent_recharge_stage4_STC_t *stage4);
+enum AGENT_ERR lib_lnt_recharge_stage5TO6_process(const int sockfd, agent_extra_data_t *extra, recharge_info_t *recharge,  lnt_packet_recharge_stage2_STC_t *recharge_stage2);
+enum AGENT_ERR lib_lnt_recharge_stage7TO8_process(const int sockfd, agent_extra_data_t *extra,  lnt_packet_recharge_stage2_STC_t *recharge_stage2, lnt_packet_recharge_stage4_STC_t *recharge_stage4);
+enum AGENT_ERR lib_lnt_recharge_stage9TO10_process(const int sockfd, agent_extra_data_t *extra, lnt_packet_recharge_stage4_STC_t *recharge_stage4, lnt_packet_recharge_stage6_STC_t *recharge_stage6);
+enum AGENT_ERR lib_lnt_recharge_stage11TO12_process(const int sockfd, agent_extra_data_t *extra, lnt_packet_recharge_stage6_STC_t *recharge_stage6, lnt_packet_recharge_stage8_STC_t *recharge_stage8);
+enum AGENT_ERR lib_lnt_recharge_stage13TO14_process(const int sockfd, agent_extra_data_t *extra, lnt_packet_recharge_stage8_STC_t *recharge_stage8, lnt_packet_recharge_stage10_STC_t *recharge_stage10, int *r_cpu_load);
+enum AGENT_ERR lib_lnt_recharge_stage15TO16_process(const int sockfd, agent_extra_data_t *extra, lnt_packet_recharge_stage10_STC_t *recharge_stage10, lnt_packet_recharge_stage12_STC_t *recharge_stage12);
+enum AGENT_ERR lib_lnt_recharge_stage17TO18_process(const int sockfd, agent_extra_data_t *extra, lnt_agent_off_card_stage24_STC_t *stage24, agent_retransmission_data_t *retrans);
+
+三、lnt.c修改：
+1.增加宏定义，新协议中跟岭南通的通信报文体中的用户ID改为"test11"，不足16字节的部分前面补0
+#define USER_ID 			"test11" 
+#define USE_NEW_USER_ID 	1
+#define UID_LEN				(strlen(USER_ID))
+
+2.增加充值报文头的封包函数：
+static void __agent_pkt_hd_setup(enum AGENT_WAY way, const unsigned short cmd, const unsigned char attr)
+
+3.增加充值数据解释函数：
+static enum AGENT_ERR __agent_pkt_data_recharge_explain(struct agent_pkt_ptr *agent_ptr)
+
+4.修改函数lib_lnt_consume_and_get_record(lib_lnt_consume_req_t *consume, lib_lnt_trade_record_ack_t *record, unsigned char *stat, unsigned char *f_type)，增加未完整交易的流程处理。
+
+5.增加如下充值函数的实现：
+enum AGENT_ERR lib_lnt_recharge_stage1TO2_process(const int sockfd, lnt_agent_recharge_stage1_CTS_t *stage1, lnt_agent_recharge_stage2_STC_t *stage2, agent_extra_data_t *extra);
+enum AGENT_ERR lib_lnt_recharge_stage3TO4_process(const int sockfd, agent_extra_data_t *extra, lnt_agent_recharge_stage4_STC_t *stage4);
+enum AGENT_ERR lib_lnt_recharge_stage5TO6_process(const int sockfd, agent_extra_data_t *extra, recharge_info_t *recharge,  lnt_packet_recharge_stage2_STC_t *recharge_stage2);
+enum AGENT_ERR lib_lnt_recharge_stage7TO8_process(const int sockfd, agent_extra_data_t *extra,  lnt_packet_recharge_stage2_STC_t *recharge_stage2, lnt_packet_recharge_stage4_STC_t *recharge_stage4);
+enum AGENT_ERR lib_lnt_recharge_stage9TO10_process(const int sockfd, agent_extra_data_t *extra, lnt_packet_recharge_stage4_STC_t *recharge_stage4, lnt_packet_recharge_stage6_STC_t *recharge_stage6);
+enum AGENT_ERR lib_lnt_recharge_stage11TO12_process(const int sockfd, agent_extra_data_t *extra, lnt_packet_recharge_stage6_STC_t *recharge_stage6, lnt_packet_recharge_stage8_STC_t *recharge_stage8);
+enum AGENT_ERR lib_lnt_recharge_stage13TO14_process(const int sockfd, agent_extra_data_t *extra, lnt_packet_recharge_stage8_STC_t *recharge_stage8, lnt_packet_recharge_stage10_STC_t *recharge_stage10, int *r_cpu_load);
+enum AGENT_ERR lib_lnt_recharge_stage15TO16_process(const int sockfd, agent_extra_data_t *extra, lnt_packet_recharge_stage10_STC_t *recharge_stage10, lnt_packet_recharge_stage12_STC_t *recharge_stage12);
+enum AGENT_ERR lib_lnt_recharge_stage17TO18_process(const int sockfd, agent_extra_data_t *extra, lnt_agent_off_card_stage24_STC_t *stage24, agent_retransmission_data_t *retrans);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

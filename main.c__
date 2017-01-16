@@ -1,0 +1,1118 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <sys/ioctl.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+
+#include "lib_general.h"
+//#include "lnt.h"
+#include "device.h"
+
+#include "gpio_ctrl.h"
+#include "lib_lnt.h"
+#include "lib_crypto.h"
+
+#if 0
+int fn_agent_proc_on_card(int cmd, void *ptr, int size);
+
+
+
+int main(int argc, char *argv[])
+{
+#if 0
+	int ret = -1;
+	unsigned char stat = 0;
+	unsigned short sw = 0;
+	lnt_getversion_ack_t ver;
+	lnt_qry_ticket_info_ack_t ticket;
+	lnt_rent_info_req_t rent_req;
+	lnt_rent_info_ack_t rent_ack;
+	lnt_parameter_set_req_t param_req;
+
+	lnt_history_record_ack_t his_rec;
+	lnt_trade_record_ack_t trade_rec;
+
+	
+	ret = dev_init("/dev/ttyO1", 115200);
+	fprintf(stderr, "dev_init ret = %d\n", ret);
+	
+
+
+#if 1
+	lnt_core_init_req_t core_req;
+	lnt_core_init_ack_t core_ack;
+
+	ret = dev_get_version(&ver, &stat, 200);
+	fprintf(stderr, "dev_get_version: %s\n", ver.version);
+
+	memset(&param_req, 0, sizeof(lnt_parameter_set_req_t));
+
+	param_req.conpa = 0x80;
+	param_req.cvad = 0x00;
+	ret = dev_set_parameter(&param_req, &stat, 100);
+	fprintf(stderr, "dev_set_parameter ret = %d, stat = %x\n", ret, stat);
+	
+	ret = dev_core_init(&core_req, &core_ack, &stat, 100);
+	fprintf(stderr, "dev_core_init stat = %x\n", stat);
+	lib_printf("core", &core_ack, sizeof(lnt_core_init_ack_t));
+#endif
+#if 1
+	fprintf(stderr, "----------------------------------------\n");
+
+
+	ret = dev_qry_ticket_info(&ticket, &stat, 200);
+	fprintf(stderr, "dev_qry_ticket_info ret = %d, ticket len=%d, sizeof(lnt_qry_ticket_info_ack_t)=%d\n", ret,  ticket.length,sizeof(lnt_qry_ticket_info_ack_t));
+	//lib_printf_v2("------dev_qry_ticket_info----------\n", &ticket, ticket.length, 16);
+	printf("blance=%d\n", ticket.ticket.blance);
+	printf("pursetype=%d\n", ticket.ticket.pursetype);
+	printf("ctim=%d\n", lib_hex_to_bcd(ticket.ticket.ctim[0]));
+	printf("ctim=%d\n", lib_hex_to_bcd(ticket.ticket.ctim[1]));
+	printf("ctim=%d\n", lib_hex_to_bcd(ticket.ticket.ctim[2]));
+	printf("ctim=%d\n", lib_hex_to_bcd(ticket.ticket.ctim[3]));
+
+	printf("areaid=%d\n", ticket.ticket.areaid);
+	printf("areacardtype=%d\n", LNT_NTOHS(ticket.ticket.areacardtype));
+	printf("areacardtype=%d\n", ticket.ticket.areacardtype);
+	
+#endif
+
+	//rent_req.id = 0x38;
+	//ret = dev_qry_rent_info(&rent_req, &rent_ack, &stat, 500);
+	//fprintf(stderr, "dev_qry_rent_info ret = %d, rent len=%d, sizeof(lnt_rent_info_ack_t)=%d\n", ret,  rent_ack.length,sizeof(lnt_rent_info_ack_t));
+
+
+
+	//ret = dev_get_history_record(&his_rec, &stat, 500);
+//	fprintf(stderr, "dev_get_history_record ret = %d, type =%d, sizeod(cpu_history_record_t)=%d\n", ret,  his_rec.ticket_type, sizeof(cpu_history_record_t));
+
+
+	//ret = dev_get_trade_record(&trade_rec, &stat, 500);
+	//fprintf(stderr, "dev_get_trade_record ret = %d, sizeod(lnt_trade_record_ack_t)=%d\n", ret,  sizeof(lnt_trade_record_ack_t));
+
+#if 0
+	
+	lnt_r_init_ack_t init_ack;
+	ret = dev_r_init(&init_ack, &stat, &sw, 100);
+	fprintf(stderr, "lnt_r_init_ack_t ret = %d, stat = %d\n", ret, stat);
+	printf("%s\n", init_ack.fw_ver);
+	printf("%x\n", sw);
+	lib_printf("init:", &init_ack, sizeof(lnt_r_init_ack_t));
+	
+#endif
+
+#if 0
+	sw = 0;
+	lnt_r_ac_login_1_ack_t login1_ack;
+	ret = dev_r_ac_login_1(&login1_ack, &stat, &sw, 100);
+	fprintf(stderr, "dev_r_ac_login_1 ret = %d, stat = %x\n", ret, stat);
+	printf("%x\n", sw);
+
+	//printf("sizeof(struct card_status_16bytes)=%d\n", sizeof(struct card_status_16bytes));
+#endif
+
+	
+	dev_release();
+#endif
+
+	int gpio_ctrl_fd =  open("/dev/gpio_ctrl", O_RDWR);
+	ioctl(gpio_ctrl_fd, GPIO_CTRL_SET_PWR_YCT, GPIO_CTRL_SW_ON); 	//岭南通读卡器上电
+	close(gpio_ctrl_fd);
+
+	//lib_sleep(1);
+
+	int a_sockfd = -1;
+	unsigned short sw = 0;
+	int err = LIB_LNT_ERROR;
+	unsigned char stat = LNT_MOC_ERROR_CARD_OP_FAIL;
+	lib_lnt_config_t config;
+	lib_lnt_getversion_ack_t ver_ack;
+
+
+
+	memset(&config, 0, sizeof(lib_lnt_config_t));
+
+	strcpy(config.tty, "/dev/ttyO1");
+	config.baudrate = 115200;
+
+	config.delay_ms = 15000;  //延迟毫秒
+
+	strcpy(config.ipaddr, "121.8.152.2");
+	config.port = 10060;
+
+	/* 运营商代码 */
+	config.spno[0] = 0x01;  
+	config.spno[1] =  0x01; 
+
+//	config.spno[0] = 0xCC;  
+//	config.spno[1] =  0xCC; 
+
+	/* PKI */
+	memset(&config.pki, 0xff, 4); 
+	/* MAC */
+	lib_get_macaddr("eth1", (char *)&config.macaddr);
+
+#if 0
+	config.macaddr[0] = 0x54;
+	config.macaddr[1] = 0x4a;
+	config.macaddr[2] = 0x16;
+	config.macaddr[3] = 0xc9;
+	config.macaddr[4] = 0xf1;
+	config.macaddr[5] = 0x3a;
+#endif
+	
+	err = lib_lnt_init(&config);
+	fprintf(stderr, "lnt init err = %d\n", err);
+
+/*
+	err = lib_lnt_get_version(&ver_ack, &stat, 200);
+	if(err > 0)
+	{
+		printf("%s\n", ver_ack.version);
+	}
+*/	
+
+#if 0
+#if 1
+	err = lib_lnt_get_version(&ver_ack, &stat, 100);
+	if(err > 0)
+	{
+		printf("%s\n", ver_ack.version);
+	}
+
+	lib_lnt_parameter_set_req_t param_req;
+	param_req.conpa = 0x80;
+	param_req.cvad = 0x00;
+	err = lib_lnt_set_parameter(&param_req, &stat, 100);
+	fprintf(stderr, "lib_lnt_set_parameter ret = %d, stat = %x\n", err, stat);
+
+
+	lib_lnt_core_init_req_t core_req;
+	lib_lnt_core_init_ack_t core_ack;
+
+	
+	err = lib_lnt_core_init(&core_req, &core_ack, &stat, 100);
+	fprintf(stderr, "lib_lnt_core_init stat = %x\n", stat);
+	lib_printf("core", &core_ack, sizeof(lnt_core_init_ack_t));
+#endif
+#if 1
+	lib_lnt_qry_ticket_info_ack_t ticket;
+	err = lib_lnt_qry_ticket_info(&ticket, &stat, 200);
+	fprintf(stderr, "lib_lnt_qry_ticket_info ret = %d, ticket len=%d, sizeof(lib_lnt_qry_ticket_info_ack_t)=%d\n", err,  ticket.length,sizeof(lib_lnt_qry_ticket_info_ack_t));
+	fprintf(stderr, "pcodeL0x%02x\n", ticket.ticket.pcode);
+#endif	
+
+#if 1
+	lnt_rent_info_req_t rent_req;
+	lnt_rent_info_ack_t rent_ack;
+	rent_req.id = 0x68;
+	err = lib_lnt_qry_rent_info(&rent_req, &rent_ack, &stat, 200);
+	fprintf(stderr, "[1]lib_lnt_qry_rent_info ret = %d, rent len=%d, sizeof(lib_lnt_rent_info_ack_t)=%d\n", err,  rent_ack.length,sizeof(lib_lnt_rent_info_ack_t));
+	fprintf(stderr, "[1]ticket_type:0x%02x\n", rent_ack.rent.ticket_type);
+#endif
+#endif
+
+#if 0
+	lib_lnt_history_record_ack_t lnt_his_rec;
+	err = lib_lnt_get_history_record(&lnt_his_rec, &stat, 100);
+	fprintf(stderr, "lib_lnt_get_history_record ret = %d, his ticket_type = %d, sizeof(lib_lnt_history_record_ack_t)=%d\n", err,  lnt_his_rec.ticket_type,sizeof(lib_lnt_history_record_ack_t));
+#endif
+
+#if 0
+
+	lnt_rent_info_t rent;
+	memset(&rent, 0, sizeof(lnt_rent_info_t));
+	rent.id = 0x68;
+	rent.length = sizeof(lib_rent_info_t );
+	printf("rent.length = %d\n", rent.length );
+
+	rent.rent.ticket_type = 0xfe; //管理卡
+	rent.rent.member_type = 1;
+	rent.rent.accu_time_of_day = 8;
+	lib_lnt_utils_time_bcd_yymmddhhMM(rent.rent.cur_deal_date);
+
+	
+	err = lib_lnt_set_rent_info(&rent, &stat, 100);
+	fprintf(stderr, "lib_lnt_set_rent_info ret = %d, sizeof(lnt_rent_info_t)=%d\n", err,  sizeof(lnt_rent_info_t));
+
+
+	err = lib_lnt_qry_rent_info(&rent_req, &rent_ack, &stat, 200);
+	fprintf(stderr, "[2]lib_lnt_qry_rent_info ret = %d, rent len=%d, sizeof(lib_lnt_rent_info_ack_t)=%d\n", err,  rent_ack.length,sizeof(lib_lnt_rent_info_ack_t));
+
+	fprintf(stderr, "[2]ticket_type:0x%02x\n", rent_ack.rent.ticket_type);
+
+
+#if 1
+	lib_lnt_consume_req_t lnt_cse;
+	memset(&lnt_cse, 0, sizeof(lib_lnt_consume_req_t));
+
+	lnt_cse.amount = 1;
+	lnt_cse.fee = 1;
+	lib_lnt_utils_time_bcd_yymmddhhMMss(lnt_cse.time);
+	memcpy(lnt_cse.phyiscalid, ticket.ticket.pid, 8);
+	lnt_cse.aty = LNT_ATY_RETURN;
+	err = lib_lnt_consume(&lnt_cse, &stat, 300);
+	fprintf(stderr, "lib_lnt_consume ret = %d, sizeof(lib_lnt_consume_req_t)=%d\n", err,  sizeof(lib_lnt_consume_req_t));
+
+	lib_lnt_trade_record_ack_t lnt_trade_rec;
+	memset(&lnt_trade_rec, 0, sizeof(lib_lnt_trade_record_ack_t));
+	err = lib_lnt_get_trade_record(&lnt_trade_rec, &stat, 200);
+	fprintf(stderr, "lib_lnt_get_trade_record ret = %d, sizeof(lib_lnt_trade_record_ack_t)=%d\n", err,  sizeof(lib_lnt_trade_record_ack_t));
+
+
+	printf("sn:%d\n", lnt_trade_rec.record.offlinetranssn);
+#endif
+#endif
+
+
+
+	//int err = LIB_LNT_ERROR;
+	//unsigned char stat = LNT_MOC_ERROR_CARD_OP_FAIL;
+
+#if 0
+	lnt_r_deposit_init_req_t dinit_req;
+	lnt_r_deposit_init_ack_t dinit_ack;
+
+
+	memset(&dinit_req, 0, sizeof(lnt_r_deposit_init_req_t));
+	memset(&dinit_ack, 0, sizeof(lnt_r_deposit_init_ack_t));
+
+
+	dinit_req.area = 0x01;
+	dinit_req.dtype = 0x00;
+	dinit_req.mark = 0x01;
+	dinit_req.code = 0x0000;
+	dinit_req.member = 0x00;
+
+	err = lib_lnt_r_deposit_init(&dinit_req, &dinit_ack, &stat, 500);
+	fprintf(stderr, "err = %d, stat = %d \n", err, stat);
+
+
+	fprintf(stderr, "sizeof(lnt_packet_register_stage1_t)=%d\n", sizeof(lnt_packet_register_stage1_t));
+
+#endif
+
+
+//	lnt_r_init_ack_t init_ack;
+
+#if 0
+	err = lib_lnt_r_init(&init_ack, &stat, 100);
+	fprintf(stderr, "lnt_r_init_ack_t ret = %d, stat = 0x%02x\n", err, stat);
+	printf("%s\n", init_ack.fw_ver);
+
+	lib_printf("pki:", &init_ack.pki, 4);
+	lib_printf("init:", &init_ack, sizeof(lnt_r_init_ack_t));
+#endif
+	
+
+#if 0
+	sw = 0;
+	lnt_r_ac_login_1_ack_t login1_ack;
+	err = dev_r_ac_login_1(&login1_ack, &stat, &sw, 100);
+	fprintf(stderr, "dev_r_ac_login_1 ret = %d, stat = %x\n", err, stat);
+	printf("%x\n", sw);
+	lib_printf_v2("login1:", &login1_ack, sizeof(lnt_r_ac_login_1_ack_t), 16);
+#endif
+
+#if 0
+
+	int sockfd = -1;
+	unsigned char txbuf[1024] = {0};
+	unsigned char rxbuf[1024] = {0};
+	unsigned int txlen = 0;
+	//sockfd = lib_tcp_client_nonb_new("14.23.145.210", 6546, 10);
+	sockfd = lib_tcp_client_new("14.23.145.210", 6546);
+	fprintf(stderr, "scokfd = %d\n", sockfd);
+
+
+	lnt_packet_head_t pkt_hd;
+	lnt_packet_register_stage1_CTS_t pkt_reg_s1;
+
+	memset(&pkt_hd, 0, sizeof(lnt_packet_head_t));
+	memset(&pkt_reg_s1, 0, sizeof(lnt_packet_register_stage1_CTS_t));
+
+
+	fprintf(stderr, "\n################## stage1 ###################\n");
+	
+	pkt_hd.head = LNT_HTONS(LNT_REGISTER_STAGE1);
+	pkt_hd.version = 0x01;
+	pkt_hd.length = LNT_HTONS(sizeof(lnt_packet_register_stage1_CTS_t) - 4);
+
+	pkt_reg_s1.appstep = 0x00;
+	//memcpy(&(pkt_reg_s1.pki), &(init_ack.pki), 4);
+	memset(&(pkt_reg_s1.pki), 0xff, 4);
+	pkt_reg_s1.ilen = 0;
+	pkt_reg_s1.crc32 = LNT_HTONL(lnt_crc32(&pkt_reg_s1, sizeof(lnt_packet_register_stage1_CTS_t) - 4));
+
+	memcpy(&txbuf, &pkt_hd, sizeof(lnt_packet_head_t));
+	memcpy(&txbuf[sizeof(lnt_packet_head_t)], &pkt_reg_s1, sizeof(lnt_packet_register_stage1_CTS_t));
+	txlen = sizeof(lnt_packet_head_t) + sizeof(lnt_packet_register_stage1_CTS_t);
+
+	lib_printf_v2("\n--------------stage1 txbuf--------------", txbuf, txlen, 16);
+
+	//err = lib_tcp_writen(sockfd, txbuf, txlen);
+	err = write(sockfd, txbuf, txlen);
+	fprintf(stderr, "stage1 lib_tcp_writen return val = %d\n", err);
+	
+	//err = lib_tcp_read_select(sockfd, rxbuf, 1024, 1000);
+	err = read(sockfd, rxbuf, 1024);
+	fprintf(stderr, "222stage1 lib_tcp_read_select return val = %d\n", err);
+	
+	lib_printf_v2("\n--------------stage1 rxbuf--------------", rxbuf, err, 16);
+	
+	lnt_packet_register_stage2_STC_t pkt_reg_s2;
+	memset(&pkt_reg_s2, 0, sizeof(lnt_packet_register_stage2_STC_t));
+	memcpy(&pkt_hd, rxbuf, sizeof(lnt_packet_head_t));
+	memcpy(&pkt_reg_s2, &rxbuf[sizeof(lnt_packet_head_t)], sizeof(lnt_packet_register_stage2_STC_t));
+
+	fprintf(stderr, " pkt_reg_s2.ilen=%d\n",  pkt_reg_s2.ilen);
+
+	memset(&init_ack, 0, sizeof(lnt_r_init_ack_t));
+	int rret = lib_lnt_CLA_INS_pkg(pkt_reg_s2.INFO, pkt_reg_s2.ilen, &init_ack, sizeof(lnt_r_init_ack_t), NULL,200);
+	fprintf(stderr, "rret = %d\n", rret);
+
+
+
+
+	
+	fprintf(stderr, "\n################## stage3 ###################\n");
+	lnt_packet_register_stage3_CTS_t pkt_reg_s3;
+	memset(&pkt_hd, 0, sizeof(lnt_packet_head_t));
+	memset(&pkt_reg_s3, 0, sizeof(lnt_packet_register_stage3_CTS_t));
+		
+	pkt_hd.head = LNT_HTONS(LNT_REGISTER_STAGE3);
+	pkt_hd.version = 0x01;
+	pkt_hd.length = LNT_HTONS(sizeof(lnt_packet_register_stage3_CTS_t) - 4);
+	
+	pkt_reg_s3.appstep = 0x01;
+	//memcpy(&(pkt_reg_s3.pki), &(init_ack.pki), 4);
+	memset(&(pkt_reg_s3.pki), 0xff, 4);
+
+	pkt_reg_s3.ilen = sizeof(lnt_r_init_ack_t);
+	memcpy(&pkt_reg_s3.R_INIT, &init_ack, sizeof(lnt_r_init_ack_t));
+
+#if 0
+	pkt_reg_s3.R_INIT[0] = 0xff;
+	pkt_reg_s3.R_INIT[1] = 0xff;
+	pkt_reg_s3.R_INIT[2] = 0xff;
+	pkt_reg_s3.R_INIT[3] = 0xff;
+#endif
+
+#if 0
+	pkt_reg_s3.R_INIT[0] = 0x50;
+	pkt_reg_s3.R_INIT[1] = 0x00;
+	pkt_reg_s3.R_INIT[2] = 0x08;
+	pkt_reg_s3.R_INIT[3] = 0x21;
+	pkt_reg_s3.R_INIT[4] = 0x4c;
+	pkt_reg_s3.R_INIT[5] = 0x4e;
+	pkt_reg_s3.R_INIT[6] = 0x54;
+	pkt_reg_s3.R_INIT[7] = 0x43;
+	pkt_reg_s3.R_INIT[8] = 0x5a;
+	pkt_reg_s3.R_INIT[9] = 0x30;
+	pkt_reg_s3.R_INIT[10] = 0x30;
+	pkt_reg_s3.R_INIT[11] = 0x34;
+	pkt_reg_s3.R_INIT[12] = 0x90;
+	pkt_reg_s3.R_INIT[13] = 0x00;
+#endif
+	
+	pkt_reg_s3.crc32 = LNT_HTONL(lnt_crc32(&pkt_reg_s3, sizeof(lnt_packet_register_stage3_CTS_t) - 4));
+
+
+	memcpy(&txbuf, &pkt_hd, sizeof(lnt_packet_head_t));
+	memcpy(&txbuf[sizeof(lnt_packet_head_t)], &pkt_reg_s3, sizeof(lnt_packet_register_stage3_CTS_t));
+	txlen = sizeof(lnt_packet_head_t) + sizeof(lnt_packet_register_stage3_CTS_t);
+	
+	lib_printf_v2("\n--------------stage3 txbuf--------------", txbuf, txlen, 16);
+
+	memset(txbuf, 0, sizeof(txbuf));
+	memset(rxbuf, 0, sizeof(rxbuf));
+
+	//err = lib_tcp_writen(sockfd, txbuf, txlen);
+
+	err = lib_tcp_send(sockfd, txbuf, txlen);
+	fprintf(stderr, "stage3 lib_tcp_writen return val = %d, txlen = %d\n", err, txlen);
+
+	fprintf(stderr, "111sockfd ====== %d\n", sockfd);
+
+	//err = lib_tcp_read_select(sockfd, rxbuf, 1024, 1000);
+	//err = read(sockfd, rxbuf, 1024);
+
+	err = lib_tcp_recv(sockfd, rxbuf, 1024);
+	fprintf(stderr, "wwstage3 lib_tcp_read return val = %d\n", err);
+
+
+	
+	lib_printf_v2("\n--------------stage3 rxbuf--------------", rxbuf, err, 16);
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	lib_disconnect(sockfd);
+
+#endif
+
+
+#if 0
+	lnt_member_proc_code_t proc;
+	unsigned char pid[8];
+
+	//while(1)
+	{
+
+		lib_sleep(3);
+
+		fprintf(stderr, "register-----\n");
+		
+		lib_lnt_register_proc_code_t proc_code;
+		memset(&proc_code, 0, sizeof(lib_lnt_register_proc_code_t));
+		proc_code =  lib_lnt_register_proc_code_get();
+
+		fprintf(stderr, "proc:%d\n", proc_code.proc);
+		fprintf(stderr, "fresult:%d\n", proc_code.fresult);
+		fprintf(stderr, "stat:0x%02x\n", proc_code.stat);
+		fprintf(stderr, "sw:0x%02x\n", proc_code.sw);
+		
+		//lib_lnt_register_notify_put(LNT_REGISTER_STAT_RE);
+
+		lib_lnt_member_deposit_process(LNT_MEMBER_OP_REGISTER, pid, &proc);
+	}
+#endif
+
+	//lib_sleep(10);
+
+#if 1
+
+	lnt_agent_on_card_stage1_CTS_t a_on_card_stage1_CTS;
+	lnt_agent_on_card_stage2_STC_t a_on_card_stage2_STC;
+
+	lnt_agent_on_card_stage3_CTS_t a_on_card_stage3_CTS;
+	lnt_agent_on_card_stage4_STC_t a_on_card_stage4_STC;
+
+	lnt_agent_on_card_stage5_CTS_t a_on_card_stage5_CTS;
+	lnt_agent_on_card_stage6_STC_t a_on_card_stage6_STC;
+
+	
+	agent_extra_data_t extra;
+	agent_retransmission_data_t retrans;
+	lnt_member_proc_code_t proc;
+
+	memset(&a_on_card_stage1_CTS, 0, sizeof(lnt_agent_on_card_stage1_CTS_t));
+
+	memset(&a_on_card_stage5_CTS, 0, sizeof(lnt_agent_on_card_stage5_CTS_t));
+	memset(&a_on_card_stage6_STC, 0, sizeof(lnt_agent_on_card_stage6_STC_t));
+	
+	memset(&proc, 0, sizeof(lnt_member_proc_code_t));
+	memset(&extra, 0, sizeof(agent_extra_data_t));
+	memset(&retrans, 0, sizeof(agent_retransmission_data_t));
+
+
+	lnt_qry_ticket_info_ack_t qry_ticket_ack;
+	lnt_rent_info_req_t rent_info_req;
+	lnt_rent_info_ack_t rent_info_ack;
+	
+
+	memset(&rent_info_req, 0, sizeof(lnt_rent_info_req_t));
+
+	dev_qry_ticket_info(&qry_ticket_ack, &stat, 200);
+
+
+	fprintf(stderr, "BLANCE=%d\n", qry_ticket_ack.ticket.blance);
+	lib_printf("CTM", qry_ticket_ack.ticket.ctim, 4); //充值时间
+	lib_printf("PCODE", &qry_ticket_ack.ticket.pcode, 2); //运营商编码 
+	fprintf(stderr, "================PMFLAG:0x%02x=================\n", qry_ticket_ack.ticket.pmflag); //运营商会员标志
+
+
+	rent_info_req.id = 0x68;
+	dev_qry_rent_info(&rent_info_req, &rent_info_ack, &stat, 400);
+
+
+
+	memcpy(a_on_card_stage1_CTS.pid, qry_ticket_ack.ticket.pid, 8);
+	lib_get_macaddr("eth1", &a_on_card_stage1_CTS.macaddr);
+	memset(a_on_card_stage1_CTS.pki, 0xff, 4);
+	strcpy(a_on_card_stage1_CTS.id_card, "441324198708084066");
+	
+	a_on_card_stage1_CTS.phone_number[5] = lib_dec_to_bcd(00);
+	a_on_card_stage1_CTS.phone_number[4] = lib_dec_to_bcd(80);
+	a_on_card_stage1_CTS.phone_number[3] = lib_dec_to_bcd(13);
+	a_on_card_stage1_CTS.phone_number[2] = lib_dec_to_bcd(00);
+	a_on_card_stage1_CTS.phone_number[1] = lib_dec_to_bcd(38);
+	a_on_card_stage1_CTS.phone_number[0] = lib_dec_to_bcd(1);
+
+	a_on_card_stage1_CTS.member_type = 0; //会员类型
+
+	memcpy(&a_on_card_stage1_CTS.ticket_info, &qry_ticket_ack.ticket, sizeof(struct ticket_info));
+	memcpy(&a_on_card_stage1_CTS.rent_info, &rent_info_ack.rent, sizeof(struct rent_info));
+	
+	lib_lnt_utils_time_bcd_yymmddhhMMss(a_on_card_stage1_CTS.time);  //时间
+	
+
+	
+	memcpy(extra.pid, qry_ticket_ack.ticket.pid, 8);
+	lib_get_macaddr("eth1", &extra.macaddr);
+	memset(extra.pki, 0xff, 4);
+	
+
+	a_sockfd = lib_lnt_on_card_connect_to_agent();
+
+	lib_lnt_on_card_stage1TO2_process(a_sockfd, &a_on_card_stage1_CTS, &a_on_card_stage2_STC);
+
+	lib_printf_v2("a_on_card_stage2_STC:", &a_on_card_stage2_STC, sizeof(a_on_card_stage2_STC), 16);
+
+
+	lib_lnt_consume_req_t lnt_cse;
+	memset(&lnt_cse, 0, sizeof(lib_lnt_consume_req_t));
+	lib_lnt_trade_record_ack_t lnt_trade_rec;
+	memset(&lnt_trade_rec, 0, sizeof(lib_lnt_trade_record_ack_t));
+	
+	lnt_cse.amount = 9;
+	lnt_cse.fee = 9;
+	lib_lnt_utils_time_bcd_yymmddhhMMss(lnt_cse.time);
+	memcpy(lnt_cse.phyiscalid, qry_ticket_ack.ticket.pid, 8);
+	lnt_cse.aty = LNT_ATY_RETURN;
+
+
+	unsigned char ssstat;
+	unsigned char ff_type;
+	int rret = lib_lnt_consume_and_get_record(&lnt_cse, &lnt_trade_rec, &ssstat, &ff_type);
+
+	lib_printf_v2("get_record:", &(lnt_trade_rec.record), sizeof(lnt_trade_rec.record), 16);
+	
+	printf("rret=%d, sn:%d\n", rret, lnt_trade_rec.record.offlinetranssn);
+
+	memcpy(&a_on_card_stage3_CTS.pid, &qry_ticket_ack.ticket.pid, 8);
+	lib_get_macaddr("eth1", &a_on_card_stage3_CTS.macaddr);
+	memset(a_on_card_stage3_CTS.pki, 0xff, 4);
+	a_on_card_stage3_CTS.trade_sn = LNT_HTONL(2015);
+	memcpy(&a_on_card_stage3_CTS.trecord, &lnt_trade_rec.record, sizeof(struct trade_record)); //交易记录
+	lib_lnt_utils_time_bcd_yymmddhhMMss(a_on_card_stage3_CTS.time);
+
+	
+	lib_lnt_on_card_stage3TO4_process(a_sockfd, &a_on_card_stage3_CTS, &a_on_card_stage4_STC, &retrans);
+	lib_printf_v2("a_on_card_stage4_STC:", &a_on_card_stage4_STC, sizeof(a_on_card_stage4_STC), 16);
+
+
+#if 0
+	lnt_member_process_stage2_STC_t member_stage2;
+	memset(&member_stage2, 0, sizeof(lnt_member_process_stage2_STC_t));
+	
+	enum AGENT_ERR aerr = lib_lnt_on_card_stage5TO6_process(a_sockfd, &extra, &member_stage2);
+	fprintf(stderr, "aerr = 0x%02x\n", aerr);
+	lib_printf_v2("lnt_member_process_stage2_STC_t:", &member_stage2, sizeof(lnt_member_process_stage2_STC_t), 16);
+#endif
+	
+#if 0
+	fprintf(stderr, "retrans.pkt_len=%d\n", retrans.pkt_len);
+	lib_printf_v2("retrans:", retrans.pkt_data, retrans.pkt_len, 16);
+	
+	lib_tcp_writen(a_sockfd, retrans.pkt_data, retrans.pkt_len);
+
+	unsigned char rxbuf[512] = {0};
+	int rxlen = lib_tcp_read_select(a_sockfd, rxbuf, sizeof(rxbuf), 5000);
+	lib_printf_v2("rxbuf:", &rxbuf, rxlen, 16);
+#endif
+
+#endif
+
+#if 0
+	int ret = -1;
+	agent_extra_data_t extra;
+	lnt_qry_ticket_info_ack_t qry_ticket_ack;
+	lnt_rent_info_req_t rent_info_req;
+	lnt_rent_info_ack_t rent_info_ack;
+	enum AGENT_ERR agent_err = AGENT_ERR_UNKNOWN;
+	agent_retransmission_data_t retran;
+
+	
+	memset(&extra, 0, sizeof(agent_extra_data_t));
+	
+	lnt_agent_off_card_stage1_CTS_t off_card_stage1_CTS;
+	lnt_agent_off_card_stage2_STC_t off_card_stage2_STC;
+	lnt_agent_off_card_stage4_STC_t off_card_stage4_STC;
+	lnt_agent_off_card_stage6_STC_t off_card_stage6_STC;
+	lnt_agent_off_card_stage10_STC_t off_card_stage10_STC;
+	lnt_agent_off_card_stage11_CTS_t off_card_stage11_CTS;
+	lnt_agent_off_card_stage12_STC_t off_card_stage12_STC;
+
+	
+	dev_qry_ticket_info(&qry_ticket_ack, &stat, 200);
+
+	fprintf(stderr, "pursetype:0x%02x\n", qry_ticket_ack.ticket.pursetype);
+
+	memcpy(extra.pid, qry_ticket_ack.ticket.pid, 8); //PID
+
+
+	rent_info_req.id = 0x68;
+	dev_qry_rent_info(&rent_info_req, &rent_info_ack, &stat, 300);
+
+
+	memcpy(off_card_stage1_CTS.pid, qry_ticket_ack.ticket.pid, 8);
+	lib_get_macaddr("eth1", &off_card_stage1_CTS.macaddr);
+	memset(off_card_stage1_CTS.pki, 0xff, 4);
+	strcpy(off_card_stage1_CTS.id_card, "441324198708084066");
+	
+	off_card_stage1_CTS.phone_number[5] = lib_dec_to_bcd(00);
+	off_card_stage1_CTS.phone_number[4] = lib_dec_to_bcd(80);
+	off_card_stage1_CTS.phone_number[3] = lib_dec_to_bcd(13);
+	off_card_stage1_CTS.phone_number[2] = lib_dec_to_bcd(00);
+	off_card_stage1_CTS.phone_number[1] = lib_dec_to_bcd(38);
+	off_card_stage1_CTS.phone_number[0] = lib_dec_to_bcd(1);
+
+	memcpy(&off_card_stage1_CTS.ticket_info, &qry_ticket_ack.ticket, sizeof(struct ticket_info));
+	memcpy(&off_card_stage1_CTS.rent_info, &rent_info_ack.rent, sizeof(struct rent_info));
+	
+	lib_lnt_utils_time_bcd_yymmddhhMMss(off_card_stage1_CTS.time);  //时间
+	
+
+	a_sockfd = lib_lnt_on_card_connect_to_agent();
+	agent_err = lib_lnt_off_card_stage1TO2_process(a_sockfd, &off_card_stage1_CTS, &off_card_stage2_STC, &extra);
+	fprintf(stderr, "stage1TO2agent_err=%02x\n", agent_err);
+	if(agent_err != AGENT_ERR_OK)
+		goto End;
+	
+	fprintf(stderr, "%s\n", extra.str.s_str);
+
+	/* 要返回代理服务器PKI和serial */
+
+	lib_printf("PKI", extra.toreader_pki, 4);
+	lib_printf("SERIAL", extra.toreader_serial, 8);
+
+	memset(&off_card_stage4_STC, 0, sizeof(lnt_agent_off_card_stage4_STC_t));
+	agent_err = lib_lnt_off_card_stage3TO4_process(a_sockfd, &extra, &off_card_stage4_STC);
+	fprintf(stderr, "stage3TO4 agent_err=%02x\n", agent_err);
+
+	memset(&off_card_stage6_STC, 0, sizeof(lnt_agent_off_card_stage6_STC_t));
+	agent_err = lib_lnt_off_card_stage5TO6_process(a_sockfd, &extra, &off_card_stage6_STC);
+	fprintf(stderr, "stage5TO6 agent_err=%02x\n", agent_err);
+
+	fprintf(stderr, "apply result:%d\n", off_card_stage6_STC.apply_result);
+	lib_printf("ORDER:", off_card_stage6_STC.order, 10);
+
+
+	lnt_member_process_stage2_STC_t member_stage2;
+	memset(&member_stage2, 0, sizeof(lnt_member_process_stage2_STC_t));
+	agent_err = lib_lnt_off_card_stage7TO8_process(a_sockfd, &extra, &member_stage2);
+	fprintf(stderr, "stage7TO8 agent_err=%d\n", agent_err);
+	
+
+	lnt_r_deposit_process_req_t dproc_req;
+	lnt_r_deposit_process_ack_t dproc_ack;
+	memset(&dproc_req, 0, sizeof(lnt_r_deposit_process_req_t));
+	memset(&dproc_ack, 0, sizeof(lnt_r_deposit_process_ack_t));
+
+	stat = LNT_MOC_ERROR_CARD_OP_FAIL;
+	memcpy(&dproc_req.data, &member_stage2.INFO, sizeof(lnt_r_deposit_process_req_t));
+
+	ret = lib_lnt_r_deposit_process(&dproc_req, &dproc_ack, &stat, 300);
+	if((ret < 0) || (stat != LNT_MOC_ERROR_NORMAL)) 
+	{
+		fprintf(stderr, "Off Card Deposit Failed!\n");
+	}
+
+
+	memset(&off_card_stage10_STC, 0, sizeof(lnt_agent_off_card_stage10_STC_t));
+	memset(&retran, 0, sizeof(agent_retransmission_data_t));
+	agent_err = lib_lnt_off_card_stage9TO10_process(a_sockfd, &extra, &off_card_stage10_STC, &retran);
+	fprintf(stderr, "stage9TO10 agent_err=%02x\n", agent_err);
+
+
+	memset(&off_card_stage11_CTS, 0, sizeof(lnt_agent_off_card_stage11_CTS_t));
+	memset(&off_card_stage12_STC, 0, sizeof(lnt_agent_off_card_stage12_STC_t));
+
+	memcpy(off_card_stage11_CTS.pid, qry_ticket_ack.ticket.pid, 8);
+
+	recharge_info_t recharge;
+
+	recharge.apply_type = 0x20;
+	memcpy(&recharge.recharge_amount, &off_card_stage6_STC.recharge, 4); //充值金额 [高位在前]
+	memcpy(&recharge.order_num, &off_card_stage6_STC.order, 10); //订单号 
+
+	lnt_packet_recharge_stage2_STC_t recharge_stage2;
+	memset(&recharge_stage2, 0, sizeof(lnt_packet_recharge_stage2_STC_t));
+
+		
+	agent_err = lib_lnt_off_card_stage11TO12_process(a_sockfd, &extra, &recharge,  &recharge_stage2);
+	fprintf(stderr, "stage11TO12 agent_err=%02x\n", agent_err);
+
+	lnt_packet_recharge_stage4_STC_t recharge_stage4;
+
+	memset(&recharge_stage4, 0, sizeof(lnt_packet_recharge_stage4_STC_t));
+	
+	
+	agent_err = lib_lnt_off_card_stage13TO14_process(a_sockfd, &extra, &recharge_stage2, &recharge_stage4);
+	fprintf(stderr, "stage13TO14 agent_err=%02x\n", agent_err);
+	
+
+#endif
+
+
+#if 1
+End:
+	lib_lnt_on_card_close_to_agent(a_sockfd);
+#endif
+
+		
+	lib_lnt_release();
+
+	
+	return 0;
+}
+#endif
+
+#if 0
+int fn_agent_proc_on_card(int cmd, void *ptr, int size)
+{
+	fprintf(stderr, "%s:cmd=0x%02x\n", __FUNCTION__, cmd);
+
+	lib_printf_v2("FN AGENT:", ptr, size, 16);
+
+	return 1;
+}
+#endif
+
+
+
+
+static int set_ticket_flag(const unsigned char flag);
+static void admin_card(void);
+static void is_admin_card(void);
+
+int main(int argc, char *argv[])
+{
+	
+	int gpio_ctrl_fd =  open("/dev/gpio_ctrl", O_RDWR);
+	ioctl(gpio_ctrl_fd, GPIO_CTRL_SET_PWR_YCT, GPIO_CTRL_SW_ON); 	//岭南通读卡器上电
+	close(gpio_ctrl_fd);		
+
+
+	//set_ticket_flag(0xFE);  //开通管理卡
+
+	//admin_card();  //管理卡
+
+	is_admin_card();
+	
+	return 0;
+}
+
+static int set_ticket_flag(const unsigned char flag)
+{
+	int ret = LNT_ERROR;
+	unsigned char stat = LNT_MOC_ERROR_CARD_OP_FAIL;
+	
+	ret = dev_init("/dev/ttyO1", 115200);
+	if(ret != LNT_EOK)
+	{
+		fprintf(stderr, "%s:On Card For Admin ERROR!\n", __FUNCTION__);
+		goto Done;
+	}
+
+	/* 参数设置 */
+	lnt_parameter_set_req_t lnt_para_req;
+	memset(&lnt_para_req, 0, sizeof(lnt_para_req));
+	lnt_para_req.conpa = 0xE0;  //0xE0:禁止M1钱包使用
+	lnt_para_req.cvad = 0x00;
+	dev_set_parameter(&lnt_para_req, &stat, 100);
+	
+	/* 核心初始化 */
+	lib_lnt_core_init_req_t core_req;
+	lib_lnt_core_init_ack_t core_ack;
+	memset(&core_req, 0, sizeof(lib_lnt_core_init_req_t));
+	memset(&core_ack, 0, sizeof(lib_lnt_core_init_ack_t));
+	core_req.spno[0] = 0x01;
+	core_req.spno[1] = 0x01;
+	dev_core_init(&core_req, &core_ack, &stat, 200);  //核心初始化
+	
+	/* 查询票卡信息 */
+	lnt_qry_ticket_info_ack_t qry_ticket_info;
+	memset(&qry_ticket_info, 0, sizeof(qry_ticket_info));
+	ret = LNT_ERROR;
+	stat = LNT_MOC_ERROR_CARD_OP_FAIL;
+	ret =  dev_qry_ticket_info(&qry_ticket_info, &stat, 300);
+	if((ret <= 0) || (stat != LNT_MOC_ERROR_NORMAL))
+	{
+		fprintf(stderr, "%s:Qry Ticket Info ERROR!\n", __FUNCTION__);
+		goto Done;
+	}
+
+	/* 查询租还车信息 */
+	lnt_rent_info_req_t rent_info_req;
+	lnt_rent_info_ack_t rent_info_ack;
+	memset(&rent_info_req, 0, sizeof(lnt_rent_info_req_t));
+	memset(&rent_info_ack, 0, sizeof(lnt_rent_info_ack_t));
+	rent_info_req.id = 0x68;
+	ret = dev_qry_rent_info(&rent_info_req, &rent_info_ack, &stat, 300);
+	if((ret <= 0) || (stat != LNT_MOC_ERROR_NORMAL))
+	{
+		fprintf(stderr, "%s:Qry Rent Info ERROR!\n", __FUNCTION__);
+		goto Done;
+	}
+
+	fprintf(stderr, "Before Rent Info Ticket Flag: %02X\n", rent_info_ack.rent.ticket_flag);
+
+	/* 设置租还车信息 */
+	lnt_rent_info_t rent_info;
+	memset(&rent_info, 0, sizeof(lnt_rent_info_t));
+	rent_info.length = 36;
+	rent_info.id = 0x68;
+	rent_info.rent.ticket_flag = 0xfe;
+	ret = dev_set_rent_info(&rent_info, &stat, 300);
+	if((ret <= 0) || (stat != LNT_MOC_ERROR_NORMAL))
+	{
+		fprintf(stderr, "%s:Set Rent Info ERROR!\n", __FUNCTION__);
+		goto Done;
+	}
+
+	/* 消费 */
+	ret = LNT_ERROR;
+	stat = LNT_MOC_ERROR_CARD_OP_FAIL;
+	lnt_consume_req_t consume;
+	memset(&consume, 0, sizeof(lnt_consume_req_t));
+	consume.amount = 0;
+	consume.fee = 0;
+	lib_lnt_utils_time_bcd_yymmddhhMMss(consume.time);
+	memcpy(consume.phyiscalid, qry_ticket_info.ticket.pid, 8);
+	consume.aty = LNT_ATY_RETURN;
+	ret = dev_consume(&consume, &stat, 200);
+	if((ret <= 0) || (stat != LNT_MOC_ERROR_NORMAL))
+	{
+		fprintf(stderr, "%s:Consume ERROR!\n", __FUNCTION__);
+		goto Done;
+	}
+
+#if 0
+	/* 读取交易记录 */
+	lib_lnt_trade_record_ack_t lnt_trade_rec;
+	memset(&lnt_trade_rec, 0, sizeof(lib_lnt_trade_record_ack_t));
+	ret = lib_lnt_get_trade_record(&lnt_trade_rec, &stat, 300);
+	if((ret <= 0) || (stat != LNT_MOC_ERROR_NORMAL))
+	{
+		fprintf(stderr, "%s:Get Trade Record ERROR!\n", __FUNCTION__);
+		goto Done;
+	}
+#endif
+		
+	/* 查询票卡信息 */
+	memset(&qry_ticket_info, 0, sizeof(qry_ticket_info));
+	ret = LNT_ERROR;
+	stat = LNT_MOC_ERROR_CARD_OP_FAIL;
+	ret =  dev_qry_ticket_info(&qry_ticket_info, &stat, 300);
+	if((ret <= 0) || (stat != LNT_MOC_ERROR_NORMAL))
+	{
+		fprintf(stderr, "%s:Qry Ticket Info ERROR!\n", __FUNCTION__);
+		goto Done;
+	}
+	
+	/* 查询租还车信息 */
+	ret = LNT_ERROR;
+	stat = LNT_MOC_ERROR_CARD_OP_FAIL;
+	memset(&rent_info_req, 0, sizeof(lnt_rent_info_req_t));
+	memset(&rent_info_ack, 0, sizeof(lnt_rent_info_ack_t));
+	rent_info_req.id = 0x68;
+	ret = dev_qry_rent_info(&rent_info_req, &rent_info_ack, &stat, 300);
+	if((ret <= 0) || (stat != LNT_MOC_ERROR_NORMAL))
+	{
+		fprintf(stderr, "%s:Qry Rent Info ERROR!\n", __FUNCTION__);
+		goto Done;
+	}
+
+	fprintf(stderr, "After Rent Info Ticket Flag: %02X\n", rent_info_ack.rent.ticket_flag);
+
+
+	fprintf(stderr, "%s:On Card For Admin OK\n", __FUNCTION__);
+
+Done:	
+	dev_release();
+	
+	return LNT_EOK;
+}
+
+
+static void admin_card(void)
+{
+		lnt_admin_36bytes_t a_36bytes;
+
+		fprintf(stderr, "sizeof(lnt_admin_36bytes_t)=%d\n", sizeof(lnt_admin_36bytes_t));
+
+		#if 0
+		unsigned char out[128] = {0};
+		unsigned char in[64] = {0};
+		unsigned char key[16] = {0};
+
+		lib_des3_encrypt(out, in, 64, key);
+
+		lib_printf_v2("OUT", out, 128, 16);
+		#endif
+
+
+		int ret = LNT_ERROR;
+		unsigned char stat = LNT_MOC_ERROR_CARD_OP_FAIL;
+		
+		ret = dev_init("/dev/ttyO1", 115200);
+		if(ret != LNT_EOK)
+		{
+			fprintf(stderr, "%s:On Card For Admin ERROR!\n", __FUNCTION__);
+			goto Done;
+		}
+
+		/* 参数设置 */
+		lnt_parameter_set_req_t lnt_para_req;
+		memset(&lnt_para_req, 0, sizeof(lnt_para_req));
+		lnt_para_req.conpa = 0xE0;  //0xE0:禁止M1钱包使用
+		lnt_para_req.cvad = 0x00;
+		dev_set_parameter(&lnt_para_req, &stat, 100);
+		
+		/* 核心初始化 */
+		lib_lnt_core_init_req_t core_req;
+		lib_lnt_core_init_ack_t core_ack;
+		memset(&core_req, 0, sizeof(lib_lnt_core_init_req_t));
+		memset(&core_ack, 0, sizeof(lib_lnt_core_init_ack_t));
+		core_req.spno[0] = 0x01;
+		core_req.spno[1] = 0x01;
+		dev_core_init(&core_req, &core_ack, &stat, 200);  //核心初始化
+
+	#if 0
+		/* 查询票卡信息 */
+		lnt_qry_ticket_info_ack_t qry_ticket_info;
+		memset(&qry_ticket_info, 0, sizeof(qry_ticket_info));
+		ret = LNT_ERROR;
+		stat = LNT_MOC_ERROR_CARD_OP_FAIL;
+		ret =  dev_qry_ticket_info(&qry_ticket_info, &stat, 300);
+		if((ret <= 0) || (stat != LNT_MOC_ERROR_NORMAL))
+		{
+			fprintf(stderr, "%s:Qry Ticket Info ERROR!\n", __FUNCTION__);
+			goto Done;
+		}
+
+
+		/* 查询管理卡信息 */
+		lnt_admin_card_info_req_t a_card_info_req;
+		lnt_admin_card_info_ack_t a_card_info_ack;
+		memset(&a_card_info_req, 0, sizeof(lnt_admin_card_info_req_t));
+		memset(&a_card_info_ack, 0, sizeof(lnt_admin_card_info_ack_t));
+		
+		a_card_info_req.id = 0x68;
+		ret = dev_qry_admin_card_info(&a_card_info_req, &a_card_info_ack, &stat, 300);
+		if((ret <= 0) || (stat != LNT_MOC_ERROR_NORMAL))
+		{
+			fprintf(stderr, "%s:Qry Admin Card Info ERROR!\n", __FUNCTION__);
+			goto Done;
+		}
+
+		fprintf(stderr, "Before Admin Card Info A6: %02X\n", a_card_info_ack.admin_36bytes.A6);
+
+#endif
+
+		lib_lnt_do_admin_card();
+
+
+
+		fprintf(stderr, "%s:Admin Card OK\n", __FUNCTION__);
+
+Done:	
+	dev_release();
+}
+
+
+
+static void is_admin_card(void)
+{
+		lnt_admin_36bytes_t a_36bytes;
+
+		fprintf(stderr, "sizeof(lnt_admin_36bytes_t)=%d\n", sizeof(lnt_admin_36bytes_t));
+
+		#if 0
+		unsigned char out[128] = {0};
+		unsigned char in[64] = {0};
+		unsigned char key[16] = {0};
+
+		lib_des3_encrypt(out, in, 64, key);
+
+		lib_printf_v2("OUT", out, 128, 16);
+		#endif
+
+
+		int ret = LNT_ERROR;
+		unsigned char stat = LNT_MOC_ERROR_CARD_OP_FAIL;
+		
+		ret = dev_init("/dev/ttyO1", 115200);
+		if(ret != LNT_EOK)
+		{
+			fprintf(stderr, "%s:On Card For Admin ERROR!\n", __FUNCTION__);
+			goto Done;
+		}
+
+		/* 参数设置 */
+		lnt_parameter_set_req_t lnt_para_req;
+		memset(&lnt_para_req, 0, sizeof(lnt_para_req));
+		lnt_para_req.conpa = 0xE0;  //0xE0:禁止M1钱包使用
+		lnt_para_req.cvad = 0x00;
+		dev_set_parameter(&lnt_para_req, &stat, 100);
+		
+		/* 核心初始化 */
+		lib_lnt_core_init_req_t core_req;
+		lib_lnt_core_init_ack_t core_ack;
+		memset(&core_req, 0, sizeof(lib_lnt_core_init_req_t));
+		memset(&core_ack, 0, sizeof(lib_lnt_core_init_ack_t));
+		core_req.spno[0] = 0x01;
+		core_req.spno[1] = 0x01;
+		dev_core_init(&core_req, &core_ack, &stat, 200);  //核心初始化
+
+	#if 0
+		/* 查询票卡信息 */
+		lnt_qry_ticket_info_ack_t qry_ticket_info;
+		memset(&qry_ticket_info, 0, sizeof(qry_ticket_info));
+		ret = LNT_ERROR;
+		stat = LNT_MOC_ERROR_CARD_OP_FAIL;
+		ret =  dev_qry_ticket_info(&qry_ticket_info, &stat, 300);
+		if((ret <= 0) || (stat != LNT_MOC_ERROR_NORMAL))
+		{
+			fprintf(stderr, "%s:Qry Ticket Info ERROR!\n", __FUNCTION__);
+			goto Done;
+		}
+
+
+		/* 查询管理卡信息 */
+		lnt_admin_card_info_req_t a_card_info_req;
+		lnt_admin_card_info_ack_t a_card_info_ack;
+		memset(&a_card_info_req, 0, sizeof(lnt_admin_card_info_req_t));
+		memset(&a_card_info_ack, 0, sizeof(lnt_admin_card_info_ack_t));
+		
+		a_card_info_req.id = 0x68;
+		ret = dev_qry_admin_card_info(&a_card_info_req, &a_card_info_ack, &stat, 300);
+		if((ret <= 0) || (stat != LNT_MOC_ERROR_NORMAL))
+		{
+			fprintf(stderr, "%s:Qry Admin Card Info ERROR!\n", __FUNCTION__);
+			goto Done;
+		}
+
+		fprintf(stderr, "Before Admin Card Info A6: %02X\n", a_card_info_ack.admin_36bytes.A6);
+
+#endif
+
+	ret = lib_lnt_is_admin_card();
+	if(ret == LNT_TRUE)
+		fprintf(stderr, "This Card Is Admin Card\n");
+	else
+		fprintf(stderr, "NOT Admin Card\n");
+
+
+
+		fprintf(stderr, "%s:Admin Card OK\n", __FUNCTION__);
+
+Done:	
+	dev_release();
+}
+
