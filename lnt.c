@@ -23,7 +23,7 @@
 /*
  * 读卡器固件升级功能开启与否 1:开启 0:关闭
  */
-#define CONFS_USING_READER_UPDATE	0 
+#define CONFS_USING_READER_UPDATE	1
 
 
 #define	LNT_CONSUME_TRY_TIMES	2 //消费次数上限
