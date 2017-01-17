@@ -1,0 +1,6 @@
+TARGET = linnantong
+
+include /home/dengjs/dowork/BicycleProject/script/bin.Makefile
+
+
+
